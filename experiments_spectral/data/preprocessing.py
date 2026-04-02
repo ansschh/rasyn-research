@@ -158,8 +158,16 @@ def preprocess_nmrshiftdb2(data_dir: Path) -> pd.DataFrame:
             can_smiles = str(smiles)
 
         solvent = row.get("Solvent", "")
-        temp_k = row.get("Temperature [K]", None)
-        field_mhz = row.get("Field Strength [MHz]", None)
+        temp_k_raw = row.get("Temperature [K]", None)
+        try:
+            temp_k = float(str(temp_k_raw).split(":")[-1].strip()) if temp_k_raw and not pd.isna(temp_k_raw) else None
+        except (ValueError, TypeError):
+            temp_k = None
+        field_mhz_raw = row.get("Field Strength [MHz]", None)
+        try:
+            field_mhz = float(str(field_mhz_raw).split(":")[-1].strip()) if field_mhz_raw and not pd.isna(field_mhz_raw) else None
+        except (ValueError, TypeError):
+            field_mhz = None
 
         # Process each nucleus
         for nucleus in ["13C", "1H"]:
@@ -183,8 +191,8 @@ def preprocess_nmrshiftdb2(data_dir: Path) -> pd.DataFrame:
                         "atom_indices": json.dumps(atom_indices),
                         "n_peaks": len(peaks),
                         "solvent": str(solvent) if not pd.isna(solvent) else "",
-                        "temperature_k": float(temp_k) if temp_k and not pd.isna(temp_k) else None,
-                        "field_mhz": float(field_mhz) if field_mhz and not pd.isna(field_mhz) else None,
+                        "temperature_k": temp_k,
+                        "field_mhz": field_mhz,
                         "source": "nmrshiftdb2",
                         "spectrum_col": col,
                     })
