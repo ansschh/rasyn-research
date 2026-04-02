@@ -27,7 +27,7 @@ training:
   max_epochs: 100
   patience: 15
   gradient_clip: 1.0
-  num_workers: 4
+  num_workers: 0
 
 # Logging
 wandb:
