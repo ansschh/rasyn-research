@@ -11,6 +11,7 @@ Supports:
 """
 
 import math
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -128,7 +129,3 @@ class ReactionEncoder(nn.Module):
         out = self.forward(input_ids, attention_mask)
         logits = self.mlm_head(out["hidden_states"])  # (batch, seq, vocab)
         return logits
-
-
-# Need this import at the top for type hints
-from typing import Optional
