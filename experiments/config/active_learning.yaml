@@ -1,0 +1,36 @@
+# Boundary-Focused Active Learning (Experiment 5)
+defaults:
+  - base
+
+experiment_name: "active_learning"
+
+# Active learning loop
+active:
+  initial_fraction: 0.10     # start with 10% of data
+  budget_per_round: 20       # experiments per acquisition round
+  n_rounds: 20
+  n_repeats: 5               # repeat full AL loop for statistics
+
+# Acquisition functions to compare
+acquisition:
+  methods:
+    - name: "random"
+      description: "Random sampling baseline"
+    - name: "uncertainty"
+      description: "Max predictive entropy"
+    - name: "expected_improvement"
+      description: "Standard BO acquisition"
+    - name: "boundary_gradient"
+      description: "Max ||grad_c p_success|| - query near viability boundary"
+    - name: "boundary_uncertainty"
+      description: "Max uncertainty where p_success near 0.5"
+
+# Oracle (Buchwald HTE ground truth)
+oracle:
+  dataset: "doyle_2018"
+  feasibility_threshold: 5.0  # yield > 5% counts as success
+
+# Evaluation
+eval:
+  viability_resolution: 50    # grid resolution for viability region estimation
+  target_confidences: [0.80, 0.90, 0.95]

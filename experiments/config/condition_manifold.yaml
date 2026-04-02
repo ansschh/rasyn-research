@@ -1,0 +1,46 @@
+# Condition Manifold Model (Experiment 2)
+defaults:
+  - base
+
+experiment_name: "condition_manifold"
+
+# Energy-based model config
+ebm:
+  condition_dim: 128        # condition embedding dimension
+  energy_hidden: [512, 256, 128]
+  n_negative_samples: 64    # NCE negative samples per positive
+  noise_scale: 0.1          # noise for contrastive samples
+  temperature: 1.0          # energy temperature for sampling
+  langevin_steps: 20        # SGLD steps for sampling from EBM
+  langevin_step_size: 0.01
+
+# Condition space
+conditions:
+  # Discrete condition vocabularies (built from data)
+  solvent_vocab_size: 200
+  catalyst_vocab_size: 200
+  reagent_vocab_size: 300
+  base_vocab_size: 100
+  # Continuous conditions
+  temp_range: [0, 300]       # Celsius
+  time_range: [0, 168]       # hours
+  concentration_range: [0.01, 10.0]  # M
+
+# Baselines to compare
+baselines:
+  - "point_mlp"              # MLP predicting single condition tuple
+  - "point_transformer"      # Transformer predicting single tuple
+  - "multi_label"            # Multi-label classification per component
+  - "ebm"                    # Our energy-based manifold model
+
+# Evaluation
+eval:
+  coverage_thresholds: [0.5, 0.7, 0.9, 0.95]
+  n_samples_from_ebm: 100   # samples drawn from EBM for evaluation
+  calibration_bins: 10
+
+training:
+  batch_size: 256
+  lr: 1.0e-4
+  max_epochs: 80
+  patience: 10

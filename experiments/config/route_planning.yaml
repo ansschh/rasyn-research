@@ -1,0 +1,40 @@
+# Risk-Sensitive Route Scoring (Experiment 4)
+defaults:
+  - base
+
+experiment_name: "route_planning"
+
+# Route scoring methods
+scoring:
+  methods:
+    - name: "expected_yield"
+      description: "Product of expected yields across steps"
+    - name: "worst_step"
+      description: "Min yield/feasibility across steps"
+    - name: "cvar_05"
+      description: "CVaR at alpha=0.05 (5th percentile risk)"
+      alpha: 0.05
+    - name: "cvar_10"
+      description: "CVaR at alpha=0.10"
+      alpha: 0.10
+    - name: "chance_constrained"
+      description: "Maximize yield subject to P(success) >= threshold"
+      success_threshold: 0.8
+    - name: "robustness_window"
+      description: "Score by volume of viable condition region"
+
+# Perturbation simulation
+perturbation:
+  n_trials: 100
+  temp_noise_std: 10.0       # degrees C
+  time_noise_std_frac: 0.15  # fraction of nominal
+  concentration_noise_std_frac: 0.10
+  # Discrete perturbation: swap solvent within class with probability
+  solvent_swap_prob: 0.1
+
+# Route generation
+routes:
+  source: "synthetic"         # generate synthetic route trees for now
+  n_routes_per_target: 20
+  max_steps: 6
+  n_targets: 200

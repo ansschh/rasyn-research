@@ -1,0 +1,42 @@
+# Yield-Feasibility Field Model (Experiment 3)
+defaults:
+  - base
+
+experiment_name: "yield_field"
+
+# Field model config
+field:
+  hidden_dims: [512, 256, 128]
+  dropout: 0.1
+  # Heteroscedastic regression (predict mean + log_variance)
+  yield_head: "heteroscedastic"
+  feasibility_head: "calibrated_sigmoid"
+
+# Deep ensemble
+ensemble:
+  n_members: 5
+  independent_init: true   # each member gets different random init
+
+# Robustness analysis
+robustness:
+  perturbation_scales: [0.05, 0.10, 0.15, 0.20]  # fraction of range
+  n_perturbation_samples: 50
+  gradient_penalty: 0.01   # smoothness regularization weight
+
+# Baselines
+baselines:
+  - "point_yield"           # Single yield predictor (no field)
+  - "point_feasibility"     # Binary feasibility classifier
+  - "field_single"          # Our field model (single, no ensemble)
+  - "field_ensemble"        # Our field model (deep ensemble)
+
+# Buchwald HTE specific
+buchwald:
+  datasets: ["doyle_2018", "ahneman_2018", "perera_2020", "baumgartner_2019"]
+  # These are dense grids - perfect for field validation
+
+training:
+  batch_size: 64
+  lr: 3.0e-4
+  max_epochs: 200
+  patience: 20
