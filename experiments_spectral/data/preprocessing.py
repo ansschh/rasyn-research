@@ -68,11 +68,16 @@ def load_records(path: Path) -> pd.DataFrame:
 
 # ─── nmrshiftdb2 preprocessing ───────────────────────────────────────────────
 
-def parse_nmrshiftdb2_spectrum(spectrum_str: str) -> Optional[list[tuple[float, float]]]:
+def parse_nmrshiftdb2_spectrum(spectrum_str: str) -> Optional[list[tuple[float, float, int]]]:
     """
     Parse nmrshiftdb2 spectrum string format.
-    Format varies but typically: "shift1|intensity1|atomidx1|shift2|intensity2|atomidx2|..."
-    or pipe-separated shift values.
+
+    Actual format: "shift;intensity_and_mult;atom_index|shift;intensity_and_mult;atom_index|..."
+    Examples:
+      "17.6;0.0Q;10|18.3;0.0T;0|22.6;0.0Q;12|"   (13C with DEPT multiplicity)
+      "3.86;0.0;9|5.47;0.0;2|"                      (1H)
+
+    Returns list of (shift, intensity, atom_index) tuples.
     """
     if not spectrum_str or pd.isna(spectrum_str):
         return None
@@ -83,38 +88,21 @@ def parse_nmrshiftdb2_spectrum(spectrum_str: str) -> Optional[list[tuple[float, 
 
     peaks = []
     try:
-        # Split by pipe
-        parts = spectrum_str.split("|")
-        # Try groups of 3 (shift, intensity, atom_index)
-        if len(parts) >= 3:
-            i = 0
-            while i + 2 < len(parts):
-                try:
-                    shift = float(parts[i].strip())
-                    intensity = float(parts[i + 1].strip())
-                    peaks.append((shift, intensity))
-                    i += 3
-                except (ValueError, IndexError):
-                    i += 1
-            # Fallback: if we got nothing, try groups of 2
-            if not peaks:
-                i = 0
-                while i + 1 < len(parts):
-                    try:
-                        shift = float(parts[i].strip())
-                        intensity = float(parts[i + 1].strip())
-                        peaks.append((shift, intensity))
-                        i += 2
-                    except (ValueError, IndexError):
-                        i += 1
-            # Last fallback: every float is a shift
-            if not peaks:
-                for p in parts:
-                    try:
-                        shift = float(p.strip())
-                        peaks.append((shift, 1.0))
-                    except ValueError:
-                        continue
+        # Split by pipe to get individual peaks
+        peak_strs = spectrum_str.split("|")
+        for peak_str in peak_strs:
+            peak_str = peak_str.strip()
+            if not peak_str:
+                continue
+            # Split by semicolon: shift;intensity_mult;atom_idx
+            fields = peak_str.split(";")
+            if len(fields) >= 2:
+                shift = float(fields[0].strip())
+                # Intensity field may have multiplicity suffix (e.g., "0.0Q", "0.0T")
+                int_str = re.sub(r'[A-Za-z]+', '', fields[1].strip())
+                intensity = float(int_str) if int_str else 1.0
+                atom_idx = int(fields[2].strip()) if len(fields) >= 3 else -1
+                peaks.append((shift, intensity, atom_idx))
     except Exception:
         return None
 
@@ -184,6 +172,7 @@ def preprocess_nmrshiftdb2(data_dir: Path) -> pd.DataFrame:
                 if peaks and len(peaks) > 0:
                     shifts = [p[0] for p in peaks]
                     intensities = [p[1] for p in peaks]
+                    atom_indices = [p[2] for p in peaks]
 
                     records.append({
                         "mol_id": f"nmrdb_{idx}",
@@ -191,6 +180,7 @@ def preprocess_nmrshiftdb2(data_dir: Path) -> pd.DataFrame:
                         "nucleus": nucleus,
                         "shifts": json.dumps(shifts),
                         "intensities": json.dumps(intensities),
+                        "atom_indices": json.dumps(atom_indices),
                         "n_peaks": len(peaks),
                         "solvent": str(solvent) if not pd.isna(solvent) else "",
                         "temperature_k": float(temp_k) if temp_k and not pd.isna(temp_k) else None,
@@ -206,12 +196,12 @@ def preprocess_nmrshiftdb2(data_dir: Path) -> pd.DataFrame:
     result_df = pd.DataFrame(records)
     print(f"  Extracted {len(result_df)} NMR spectrum records")
 
-    # Summary
-    for nuc in ["13C", "1H"]:
-        nuc_df = result_df[result_df["nucleus"] == nuc]
-        if len(nuc_df) > 0:
-            avg_peaks = nuc_df["n_peaks"].mean()
-            print(f"    {nuc}: {len(nuc_df)} spectra, avg {avg_peaks:.1f} peaks")
+    if len(result_df) > 0:
+        for nuc in ["13C", "1H"]:
+            nuc_df = result_df[result_df["nucleus"] == nuc]
+            if len(nuc_df) > 0:
+                avg_peaks = nuc_df["n_peaks"].mean()
+                print(f"    {nuc}: {len(nuc_df)} spectra, avg {avg_peaks:.1f} peaks")
 
     return result_df
 
