@@ -1,0 +1,27 @@
+# Forward MS/MS Model (Experiment 2)
+defaults:
+  - base
+
+experiment_name: "forward_msms"
+
+forward_msms:
+  # Predict fragmentation spectrum
+  max_mz: 1500.0
+  spectrum_bins: 2000
+  # Collision energy conditioning
+  ce_embedding_dim: 32
+  # Peak set output (variable length)
+  max_peaks: 100
+  peak_features: ["mz", "intensity"]
+  # Architecture
+  hidden_dims: [512, 256]
+
+loss:
+  cosine_weight: 1.0
+  ot_weight: 0.5
+  peak_count_weight: 0.1
+
+training:
+  batch_size: 128
+  lr: 3.0e-4
+  max_epochs: 80

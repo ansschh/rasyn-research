@@ -1,0 +1,40 @@
+seed: 42
+num_seeds: 3
+
+# Paths
+data_dir: "./data/raw"
+processed_dir: "./data/processed"
+checkpoint_dir: "./checkpoints"
+results_dir: "./results"
+
+# Molecular encoder (graph-based)
+mol_encoder:
+  node_features: 64
+  edge_features: 32
+  hidden_dim: 256
+  n_layers: 4
+  dropout: 0.1
+
+# Peak set encoder (Set Transformer)
+peak_encoder:
+  d_model: 256
+  n_heads: 4
+  n_layers: 3
+  n_inducing: 32  # inducing points for ISAB
+  peak_feature_dim: 4  # (position, intensity, multiplicity, uncertainty)
+  max_peaks: 200
+
+# Training defaults
+training:
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 1.0e-5
+  warmup_steps: 500
+  max_epochs: 100
+  patience: 15
+  gradient_clip: 1.0
+  num_workers: 0
+
+wandb:
+  project: "rasyn-spectral-inference"
+  entity: null

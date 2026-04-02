@@ -1,0 +1,40 @@
+# Posterior Inference Engine (Experiment 3 + 4)
+defaults:
+  - base
+
+experiment_name: "posterior_inference"
+
+posterior:
+  # Number of candidate molecules to consider
+  n_candidates: 100
+  # Retrieval from spectral index
+  retrieval_k: 50
+  # Generation to fill remaining candidates
+  generation_k: 50
+  # Posterior scoring
+  nmr_weight: 1.0
+  msms_weight: 1.0
+  prior_weight: 0.5
+  # Temperature for posterior calibration
+  temperature: 1.0
+  # OT parameters for spectral matching
+  ot_reg: 0.1  # entropic regularization
+
+# Candidate generator
+generator:
+  type: "fingerprint_vae"
+  latent_dim: 256
+  fp_dim: 2048
+  hidden_dims: [512, 256]
+
+# Ablations
+ablations:
+  - "nmr_only"
+  - "msms_only"
+  - "nmr_plus_msms"
+  - "nmr_plus_msms_plus_prior"
+
+training:
+  batch_size: 32
+  lr: 1.0e-4
+  max_epochs: 60

@@ -1,0 +1,29 @@
+# Next-Measurement Policy (Experiment 5)
+defaults:
+  - base
+
+experiment_name: "measurement_policy"
+
+policy:
+  # Available measurement actions
+  actions:
+    - "1H_NMR"
+    - "13C_NMR"
+    - "HSQC"
+    - "COSY"
+    - "MS_low_energy"
+    - "MS_high_energy"
+  # Acquisition budget
+  max_measurements: 4
+  # Policy types to compare
+  methods:
+    - "random"
+    - "fixed_order"     # always 1H -> 13C -> MS -> HSQC
+    - "entropy_greedy"  # pick measurement that maximizes expected entropy reduction
+    - "info_gain"       # expected information gain (full Bayesian)
+
+# Simulation
+simulation:
+  n_molecules: 500
+  n_repeats: 10
+  noise_scale: 0.05  # add noise to simulated spectra

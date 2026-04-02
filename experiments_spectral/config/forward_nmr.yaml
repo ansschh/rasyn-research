@@ -1,0 +1,28 @@
+# Forward NMR Model (Experiment 1)
+defaults:
+  - base
+
+experiment_name: "forward_nmr"
+
+forward_nmr:
+  # Predict per-atom chemical shifts
+  shift_head_hidden: [256, 128]
+  # Predict full spectrum (optional)
+  spectrum_bins: 1000
+  spectrum_range: [0.0, 220.0]  # ppm range for 13C
+  # Heteroscedastic: predict mean + uncertainty per atom
+  heteroscedastic: true
+  # Nuclei to model
+  nuclei: ["1H", "13C"]
+
+# Losses
+loss:
+  shift_mae_weight: 1.0
+  spectrum_ot_weight: 0.5  # optimal transport loss on spectrum
+  calibration_weight: 0.1
+
+training:
+  batch_size: 64
+  lr: 3.0e-4
+  max_epochs: 100
+  patience: 15
