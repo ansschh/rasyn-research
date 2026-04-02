@@ -78,32 +78,40 @@ def canonicalize_smiles(smi: str) -> Optional[str]:
 
 def preprocess_orderly(data_dir: Path, success_threshold: float = 5.0) -> list[ReactionRecord]:
     """
-    Preprocess ORDerly condition dataset.
+    Preprocess ORDerly condition dataset (Figshare benchmark parquets).
 
-    ORDerly provides cleaned reaction data with:
-    - reaction SMILES
-    - agent_1, agent_2 (solvents/reagents)
-    - catalyst_1, catalyst_2
-    - product_yield
-    - temperature
+    Actual columns (from orderly_condition_train.parquet):
+    - rxn_str: full reaction SMILES (reactants>>products)
+    - solvent_000, solvent_001: solvents
+    - agent_000, agent_001, agent_002: reagents/agents
+    - product_000: product SMILES
+    - reactant_000, reactant_001: reactant SMILES
+    - temperature: temperature in Celsius
+    - rxn_time: reaction time
+    - yield_000: yield value
     """
-    csv_path = data_dir / "orderly" / "orderly_condition_data.csv.gz"
-    if not csv_path.exists():
-        print(f"ORDerly data not found at {csv_path}")
-        print("Run download.py first.")
-        return []
+    # Try parquet first (Figshare benchmark), then csv.gz fallback
+    parquet_path = data_dir / "orderly" / "orderly_condition_train.parquet"
+    if parquet_path.exists():
+        print(f"Loading ORDerly from {parquet_path}...")
+        df = pd.read_parquet(parquet_path)
+    else:
+        csv_path = data_dir / "orderly" / "orderly_condition_data.csv.gz"
+        if not csv_path.exists():
+            print(f"ORDerly data not found. Run download.py first.")
+            return []
+        print(f"Loading ORDerly from {csv_path}...")
+        df = pd.read_csv(csv_path, compression="gzip")
 
-    print(f"Loading ORDerly from {csv_path}...")
-    df = pd.read_csv(csv_path, compression="gzip")
     print(f"  Loaded {len(df)} reactions")
 
     records = []
     for idx, row in df.iterrows():
-        rxn_smi = row.get("rxn_smiles", row.get("canonical_rxn", ""))
+        # Parse reaction SMILES
+        rxn_smi = row.get("rxn_str", "")
         if not rxn_smi or pd.isna(rxn_smi):
             continue
 
-        # Parse reaction SMILES: reactants>>products
         parts = str(rxn_smi).split(">>")
         if len(parts) != 2:
             continue
@@ -115,33 +123,55 @@ def preprocess_orderly(data_dir: Path, success_threshold: float = 5.0) -> list[R
         if product_can is None or reactant_can is None:
             continue
 
-        yield_val = row.get("product_yield", row.get("yield", None))
+        # Yield
+        yield_val = row.get("yield_000", None)
         if yield_val is not None and not pd.isna(yield_val):
             yield_val = float(yield_val)
         else:
             yield_val = None
 
+        # Temperature
         temp = row.get("temperature", None)
         if temp is not None and not pd.isna(temp):
             temp = float(temp)
         else:
             temp = None
 
+        # Reaction time
+        rxn_time = row.get("rxn_time", None)
+        if rxn_time is not None and not pd.isna(rxn_time):
+            rxn_time = float(rxn_time)
+        else:
+            rxn_time = None
+
+        # Extract condition strings safely
+        def safe_str(val):
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                return None
+            s = str(val).strip()
+            return s if s else None
+
         rec = ReactionRecord(
             reaction_id=f"orderly_{idx}",
             product_smiles=product_can,
             reactant_smiles=reactant_can,
             reaction_smiles=f"{product_can}>>{reactant_can}",
-            solvent=str(row.get("agent_1", "")) if not pd.isna(row.get("agent_1", np.nan)) else None,
-            catalyst=str(row.get("catalyst_1", "")) if not pd.isna(row.get("catalyst_1", np.nan)) else None,
-            reagent=str(row.get("agent_2", "")) if not pd.isna(row.get("agent_2", np.nan)) else None,
+            solvent=safe_str(row.get("solvent_000")),
+            catalyst=None,  # ORDerly benchmark doesn't separate catalyst
+            reagent=safe_str(row.get("agent_000")),
+            base=safe_str(row.get("agent_001")),
+            ligand=safe_str(row.get("agent_002")),
             temperature=temp,
+            time_hours=rxn_time,
             yield_value=yield_val,
             success=(yield_val > success_threshold) if yield_val is not None else None,
             source="orderly",
             dataset="orderly_condition",
         )
         records.append(rec)
+
+        if idx % 100000 == 0 and idx > 0:
+            print(f"  Processed {idx} reactions...")
 
     print(f"  Processed {len(records)} valid reactions")
     return records
@@ -153,10 +183,16 @@ def preprocess_buchwald_doyle(data_dir: Path, success_threshold: float = 5.0) ->
     """
     Preprocess Doyle 2018 Buchwald-Hartwig amination HTE dataset.
 
-    This dataset has a full combinatorial grid:
-    - 15 aryl halides x 4 additives x 3 bases x 4 ligands = 720 combinations
-    - Multiple replicates → ~3955 reactions
-    - Dense yield measurements
+    Actual columns (from doyle_2018.csv / data_table.csv):
+    - base, base_smiles: base name and SMILES
+    - ligand, ligand_smiles: ligand name and SMILES
+    - aryl_halide, aryl_halide_smiles: substrate
+    - additive, additive_smiles: additive
+    - product_smiles: product SMILES
+    - yield: reaction yield (0-100)
+    - plate, row, col: plate position
+
+    4599 reactions in a combinatorial grid — ideal for field modeling.
     """
     csv_path = data_dir / "buchwald" / "doyle_2018.csv"
     if not csv_path.exists():
@@ -167,24 +203,37 @@ def preprocess_buchwald_doyle(data_dir: Path, success_threshold: float = 5.0) ->
     df = pd.read_csv(csv_path)
     print(f"  Loaded {len(df)} reactions")
 
+    def safe_str(val):
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return None
+        s = str(val).strip()
+        return s if s else None
+
     records = []
     for idx, row in df.iterrows():
-        # The Doyle dataset columns vary — adapt to actual format
-        yield_val = None
-        for col in ["Output", "yield", "Yield", "output"]:
-            if col in df.columns:
-                yield_val = float(row[col]) if not pd.isna(row[col]) else None
-                break
+        yield_val = row.get("yield", None)
+        if yield_val is not None and not pd.isna(yield_val):
+            yield_val = float(yield_val)
+        else:
+            yield_val = None
 
-        # Build record with whatever condition columns exist
+        # Product SMILES
+        product = safe_str(row.get("product_smiles"))
+        product_can = canonicalize_smiles(product) if product else ""
+
+        # Build reaction SMILES from aryl_halide + amine (implicit) -> product
+        aryl_halide = safe_str(row.get("aryl_halide_smiles"))
+
         rec = ReactionRecord(
             reaction_id=f"doyle_{idx}",
-            product_smiles="",  # HTE datasets often don't have explicit SMILES
-            reactant_smiles="",
-            reaction_smiles="",
-            ligand=str(row.get("Ligand", row.get("ligand", ""))) if "Ligand" in df.columns or "ligand" in df.columns else None,
-            base=str(row.get("Base", row.get("base", ""))) if "Base" in df.columns or "base" in df.columns else None,
-            solvent=str(row.get("Solvent", row.get("solvent", ""))) if "Solvent" in df.columns or "solvent" in df.columns else None,
+            product_smiles=product_can or "",
+            reactant_smiles=aryl_halide or "",
+            reaction_smiles=f"{product_can}>>{aryl_halide}" if product_can and aryl_halide else "",
+            ligand=safe_str(row.get("ligand")),
+            base=safe_str(row.get("base")),
+            reagent=safe_str(row.get("additive")),
+            catalyst=None,  # Pd catalyst is implicit (same across all)
+            solvent=None,    # Same solvent across all in this dataset
             yield_value=yield_val,
             success=(yield_val > success_threshold) if yield_val is not None else None,
             source="buchwald_hte",
@@ -192,7 +241,8 @@ def preprocess_buchwald_doyle(data_dir: Path, success_threshold: float = 5.0) ->
         )
         records.append(rec)
 
-    print(f"  Processed {len(records)} reactions")
+    n_success = sum(1 for r in records if r.success)
+    print(f"  Processed {len(records)} reactions ({n_success} successful, {len(records)-n_success} failed)")
     return records
 
 
