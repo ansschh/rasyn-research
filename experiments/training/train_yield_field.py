@@ -91,10 +91,12 @@ def main():
     df = load_records(processed_dir / f"{args.dataset}.parquet")
     print(f"Loaded {len(df)} reactions from {args.dataset}")
 
-    # Filter to reactions with yield data
+    # Filter to reactions with valid yield data (0-100 range)
     if "yield_value" in df.columns:
         df = df[df["yield_value"].notna()].reset_index(drop=True)
-        print(f"  {len(df)} reactions with yield data")
+        n_before = len(df)
+        df = df[(df["yield_value"] >= 0) & (df["yield_value"] <= 100)].reset_index(drop=True)
+        print(f"  {len(df)} reactions with valid yield (filtered {n_before - len(df)} outliers)")
 
     # Load tokenizer + condition encoder
     tokenizer = SmilesTokenizer.load(processed_dir / "smiles_vocab.json") if (processed_dir / "smiles_vocab.json").exists() else SmilesTokenizer()
