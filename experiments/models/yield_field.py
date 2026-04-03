@@ -112,7 +112,7 @@ class YieldFeasibilityField(nn.Module):
         # Yield: Gaussian NLL with learned variance
         if has_yield.sum() > 0:
             mean = predictions["yield_mean"]
-            logvar = predictions["yield_logvar"]
+            logvar = predictions["yield_logvar"].clamp(-10, 10)  # prevent NaN from extreme logvar
             # NLL = 0.5 * (log(var) + (y - mean)^2 / var)
             nll = 0.5 * (logvar + (yield_target - mean) ** 2 * torch.exp(-logvar))
             yield_loss = (nll * has_yield).sum() / has_yield.sum().clamp(min=1)
