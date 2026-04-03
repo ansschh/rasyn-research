@@ -298,13 +298,14 @@ def generate_negative_samples(
         if strategy < 0.4:
             # Swap one random discrete component with a random value
             neg_d = discrete_ids.clone()
-            col = torch.randint(0, n_discrete, (batch_size,))
-            if discrete_vocab_sizes:
-                max_val = discrete_vocab_sizes[col[0].item()]
+            col_idx = torch.randint(0, n_discrete, (1,)).item()
+            if discrete_vocab_sizes and col_idx < len(discrete_vocab_sizes):
+                max_val = max(discrete_vocab_sizes[col_idx], 2)
             else:
-                max_val = 200
+                # Use max observed value + 1 as safe fallback
+                max_val = max(int(discrete_ids[:, col_idx].max().item()) + 1, 2)
             new_vals = torch.randint(1, max_val, (batch_size,), device=discrete_ids.device)
-            neg_d[torch.arange(batch_size), col] = new_vals
+            neg_d[torch.arange(batch_size), col_idx] = new_vals
             neg_cont = continuous_vals + torch.randn_like(continuous_vals) * noise_scale * 0.5
 
         elif strategy < 0.7:

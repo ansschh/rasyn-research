@@ -47,6 +47,9 @@ def point_condition_loss_fn(model_bundle, batch):
     return losses
 
 
+_discrete_vocab_size_list = None  # set in main() before training
+
+
 def ebm_condition_loss_fn(model_bundle, batch):
     """Loss for energy-based condition manifold model."""
     encoder, ebm = model_bundle
@@ -55,12 +58,13 @@ def ebm_condition_loss_fn(model_bundle, batch):
     enc_out = encoder(batch["input_ids"], batch["attention_mask"])
     reaction_repr = enc_out["pooled"]
 
-    # Generate negatives
+    # Generate negatives with proper vocab sizes
     neg_discrete, neg_continuous = generate_negative_samples(
         batch["discrete_conditions"],
         batch["continuous_conditions"],
         n_negatives=64,
         noise_scale=0.1,
+        discrete_vocab_sizes=_discrete_vocab_size_list,
     )
 
     # NCE loss
@@ -152,6 +156,10 @@ def main():
 
     # Discrete vocab sizes for heads
     discrete_vocab_sizes = {k: len(v) for k, v in discrete_vocabs.items()}
+
+    # Set global for EBM negative sampling
+    global _discrete_vocab_size_list
+    _discrete_vocab_size_list = [len(v) for v in discrete_vocabs.values()]
 
     def train_model(name, loss_fn, model_bundle):
         print(f"\n{'='*60}")
