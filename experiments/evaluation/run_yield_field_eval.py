@@ -59,7 +59,6 @@ def main():
     if tokenizer_path.exists():
         tokenizer = SmilesTokenizer.load(tokenizer_path)
     else:
-        from data.featurization import SmilesTokenizer
         tokenizer = SmilesTokenizer({"<PAD>": 0, "<UNK>": 1, "<BOS>": 2, "<EOS>": 3, "<MASK>": 4, "<SEP>": 5})
 
     # Use same split as training
@@ -244,7 +243,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# Import needed at top
-from data.featurization import SmilesTokenizer
