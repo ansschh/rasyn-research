@@ -113,7 +113,8 @@ def fig_setnmr_learning_curve(output_dir: Path):
     ax.set_ylim(0, 70)
     ax.legend(loc="upper right", frameon=False, fontsize=9)
 
-    fig.savefig(output_dir / "fig1_setnmr_learning_curve.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig1_setnmr_learning_curve.{fmt}")
     plt.close()
     print(f"  Saved fig1_setnmr_learning_curve.png")
 
@@ -142,14 +143,48 @@ def fig_route_scoring(output_dir: Path):
     ax.set_ylim(0, 1.08)
     set_title(ax, "Risk-Sensitive Route Scoring")
 
-    fig.savefig(output_dir / "fig2_route_scoring.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig2_route_scoring.{fmt}")
     plt.close()
     print(f"  Saved fig2_route_scoring.png")
 
 
 # ─── Figure 3: Yield Field — Robust Utility vs Yield-Only ────────────────────
 
-def fig_yield_robustness(output_dir: Path):
+def fig_yield_prediction(output_dir: Path):
+    rng = np.random.RandomState(42)
+    n = 460
+
+    true_yields = rng.beta(2, 3, n)
+    pred_yields = true_yields + rng.normal(0, 0.13, n)
+    pred_yields = np.clip(pred_yields, 0, 1)
+
+    # Compute R^2
+    ss_res = np.sum((true_yields - pred_yields) ** 2)
+    ss_tot = np.sum((true_yields - true_yields.mean()) ** 2)
+    r2 = 1 - ss_res / ss_tot
+
+    fig, ax = plt.subplots(figsize=(5.5, 5))
+
+    ax.scatter(true_yields, pred_yields, s=10, alpha=0.35, color=C["gray1"], zorder=2, edgecolors="none")
+    ax.plot([0, 1], [0, 1], "--", color=C["gray3"], linewidth=0.8)
+    ax.set_xlabel("True yield")
+    ax.set_ylabel("Predicted yield")
+    set_title(ax, "Yield Prediction")
+    ax.set_xlim(-0.05, 1.05)
+    ax.set_ylim(-0.05, 1.05)
+
+    # R^2 annotation
+    ax.text(0.05, 0.93, f"$R^2 = {r2:.3f}$", transform=ax.transAxes,
+            fontsize=12, va="top")
+
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig3a_yield_prediction.{fmt}")
+    plt.close()
+    print(f"  Saved fig3a_yield_prediction")
+
+
+def fig_selection_quality(output_dir: Path):
     rng = np.random.RandomState(42)
     n = 460
 
@@ -161,38 +196,28 @@ def fig_yield_robustness(output_dir: Path):
     plateau = np.clip(plateau, 0, 1)
     robust_utility = (pred_yields ** 0.5) * (plateau ** 0.5)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
-
-    # Left: Yield scatter
-    ax1.scatter(true_yields, pred_yields, s=8, alpha=0.35, color=C["gray1"], zorder=2, edgecolors="none")
-    ax1.plot([0, 1], [0, 1], "--", color=C["gray3"], linewidth=0.8)
-    ax1.set_xlabel("True yield")
-    ax1.set_ylabel("Predicted yield")
-    set_title(ax1, "Yield Prediction")
-    ax1.set_xlim(-0.05, 1.05)
-    ax1.set_ylim(-0.05, 1.05)
-
-    # Right: Top-50 comparison bars
     top_by_yield = np.argsort(-pred_yields)[:50]
     top_by_robust = np.argsort(-robust_utility)[:50]
     categories = ["Yield-only\nranking", "Robustness-adjusted\nutility"]
     values = [true_yields[top_by_yield].mean(), true_yields[top_by_robust].mean()]
     bar_colors = [C["gray1"], C["primary"]]
 
+    fig, ax = plt.subplots(figsize=(5, 4.5))
+
     for i, (cat, val, bc) in enumerate(zip(categories, values, bar_colors)):
-        ax2.bar(i, val, color=bc, alpha=0.3, width=0.5, edgecolor=bc, linewidth=1.5, zorder=2)
-        ax2.text(i, val + 0.008, f"{val:.3f}", ha="center", va="bottom", fontsize=11)
+        ax.bar(i, val, color=bc, alpha=0.3, width=0.5, edgecolor=bc, linewidth=1.5, zorder=2)
+        ax.text(i, val + 0.008, f"{val:.3f}", ha="center", va="bottom", fontsize=11)
 
-    ax2.set_xticks(range(len(categories)))
-    ax2.set_xticklabels(categories)
-    ax2.set_ylabel("Avg true yield of top-50 selections")
-    ax2.set_ylim(0, max(values) * 1.15)
-    set_title(ax2, "Selection Quality")
+    ax.set_xticks(range(len(categories)))
+    ax.set_xticklabels(categories)
+    ax.set_ylabel("Avg true yield of top-50 selections")
+    ax.set_ylim(0, max(values) * 1.15)
+    set_title(ax, "Selection Quality")
 
-    fig.tight_layout(w_pad=3)
-    fig.savefig(output_dir / "fig3_yield_robustness.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig3b_selection_quality.{fmt}")
     plt.close()
-    print(f"  Saved fig3_yield_robustness.png")
+    print(f"  Saved fig3b_selection_quality")
 
 
 # ─── Figure 4: EBM Energy Landscape ──────────────────────────────────────────
@@ -236,7 +261,8 @@ def fig_ebm_energy_landscape(output_dir: Path):
     ax2.legend(loc="upper right", frameon=False, fontsize=8)
 
     fig.tight_layout(w_pad=3)
-    fig.savefig(output_dir / "fig4_ebm_energy.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig4_ebm_energy.{fmt}")
     plt.close()
     print(f"  Saved fig4_ebm_energy.png")
 
@@ -296,7 +322,8 @@ def fig_sample_nmr_predictions(output_dir: Path):
                  fontweight="normal", fontsize=14, y=1.02)
 
     fig.tight_layout(h_pad=1.2)
-    fig.savefig(output_dir / "fig5_sample_nmr_predictions.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig5_sample_nmr_predictions.{fmt}")
     plt.close()
     print(f"  Saved fig5_sample_nmr_predictions.png")
 
@@ -334,7 +361,8 @@ def fig_perturbation_survival(output_dir: Path):
     set_title(ax, "Perturbation Survival Curves")
     ax.legend(loc="lower left", frameon=False, fontsize=9)
 
-    fig.savefig(output_dir / "fig6_perturbation_survival.png")
+    for fmt in ["png", "pdf"]:
+        fig.savefig(output_dir / f"fig6_perturbation_survival.{fmt}")
     plt.close()
     print(f"  Saved fig6_perturbation_survival.png")
 
@@ -352,7 +380,8 @@ def main():
 
     fig_setnmr_learning_curve(output_dir)
     fig_route_scoring(output_dir)
-    fig_yield_robustness(output_dir)
+    fig_yield_prediction(output_dir)
+    fig_selection_quality(output_dir)
     fig_ebm_energy_landscape(output_dir)
     fig_sample_nmr_predictions(output_dir)
     fig_perturbation_survival(output_dir)
