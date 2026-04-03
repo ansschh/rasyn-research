@@ -108,9 +108,9 @@ def main():
         ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
         state = ckpt["model_state_dict"]
 
-        enc_state = {k.replace("encoder.", ""): v for k, v in state.items() if k.startswith("encoder.")}
-        emb_state = {k.replace("cond_embedder.", ""): v for k, v in state.items() if k.startswith("cond_embedder.")}
-        ym_state = {k.replace("yield_model.", ""): v for k, v in state.items() if k.startswith("yield_model.")}
+        enc_state = {k[len("encoder."):]: v for k, v in state.items() if k.startswith("encoder.")}
+        emb_state = {k[len("cond_embedder."):]: v for k, v in state.items() if k.startswith("cond_embedder.")}
+        ym_state = {k[len("yield_model."):]: v for k, v in state.items() if k.startswith("yield_model.")}
 
         encoder.load_state_dict(enc_state)
         cond_embedder.load_state_dict(emb_state)

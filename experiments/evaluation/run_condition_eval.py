@@ -74,8 +74,8 @@ def main():
         ckpt = torch.load(point_ckpt, map_location=device, weights_only=False)
         # The checkpoint has the full ModelBundle state
         state = ckpt["model_state_dict"]
-        enc_state = {k.replace("encoder.", ""): v for k, v in state.items() if k.startswith("encoder.")}
-        head_state = {k.replace("head.", ""): v for k, v in state.items() if k.startswith("head.")}
+        enc_state = {k[len("encoder."):]: v for k, v in state.items() if k.startswith("encoder.")}
+        head_state = {k[len("head."):]: v for k, v in state.items() if k.startswith("head.")}
         encoder_point.load_state_dict(enc_state)
         point_head.load_state_dict(head_state)
         print(f"  Loaded from {point_ckpt}")
@@ -104,8 +104,8 @@ def main():
     if ebm_ckpt.exists():
         ckpt = torch.load(ebm_ckpt, map_location=device, weights_only=False)
         state = ckpt["model_state_dict"]
-        enc_state = {k.replace("encoder.", ""): v for k, v in state.items() if k.startswith("encoder.")}
-        head_state = {k.replace("head.", ""): v for k, v in state.items() if k.startswith("head.")}
+        enc_state = {k[len("encoder."):]: v for k, v in state.items() if k.startswith("encoder.")}
+        head_state = {k[len("head."):]: v for k, v in state.items() if k.startswith("head.")}
         encoder_ebm.load_state_dict(enc_state)
         ebm_head.load_state_dict(head_state)
         print(f"  Loaded from {ebm_ckpt}")
